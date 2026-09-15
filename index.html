@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Say it · teacher</title>
+<title>Say it</title>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet" />
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -31,22 +31,22 @@
 <div id="root"></div>
 
 <div id="boot">
-  <div style="font-size:20px;font-weight:600;margin-bottom:10px">Loading Say it · teacher…</div>
+  <div style="font-size:20px;font-weight:600;margin-bottom:10px">Loading Say it…</div>
   <div id="bootmsg" style="color:#3C4A44;font-size:15px">
     If this message is still here after a few seconds, the page couldn't reach the libraries it needs.
     Check you're online. If you opened this by double-clicking and it still won't load, run a tiny local
     server from the folder these files are in and open it from there:
     <div style="margin-top:10px"><code>python3 -m http.server 8000</code></div>
-    <div style="margin-top:8px">then go to <code>http://localhost:8000/teacher.html</code></div>
+    <div style="margin-top:8px">then go to <code>http://localhost:8000/index.html</code></div>
   </div>
 </div>
 
 <script>
   window.addEventListener("error", function (e) {
     var b = document.getElementById("bootmsg");
-    if (b) b.innerHTML = '<b style="color:#B24A18">Something went wrong loading the page.</b><br>' +
-      '<span style="font-size:14px">' + (e.message || e.error) + '</span>' +
-      '<div style="margin-top:12px;font-size:14px">Most often this is a browser blocking local files. Run <code>python3 -m http.server 8000</code> in this folder and open <code>http://localhost:8000/teacher.html</code></div>';
+    if (b) b.innerHTML = '<b style="color:#B24A18">Something went wrong loading Say it.</b><br>' +
+      '<span style="font-size:14px">' + (e.message || e.error || "Unknown browser error") + '</span>' +
+      '<div style="margin-top:12px;font-size:14px">If this is the shared link, first try a normal reload. If the page is completely blank, the browser may be blocking one of the public libraries Say it needs.</div>';
   });
 </script>
 
@@ -126,7 +126,17 @@ const LS = {
   del:(k)=>{ try{ localStorage.removeItem(k); }catch{} },
 };
 
-const settings = () => LS.get("sayit:settings", { supabaseUrl:"", supabaseKey:"", anthropicKey:"", proxyUrl:"" });
+const DEFAULT_SUPABASE_URL = "https://oqnnjfmobrnrfpimglln.supabase.co";
+const DEFAULT_SUPABASE_KEY = "sb_publishable_E4jz_jSfbWKsQZ7lneQCLQ_ATdpw6Si";
+const settings = () => {
+  const saved = LS.get("sayit:settings", {});
+  return {
+    supabaseUrl: saved.supabaseUrl || DEFAULT_SUPABASE_URL,
+    supabaseKey: saved.supabaseKey || DEFAULT_SUPABASE_KEY,
+    anthropicKey: saved.anthropicKey || "",
+    proxyUrl: saved.proxyUrl || ""
+  };
+};
 const saveSettings = (s) => LS.set("sayit:settings", s);
 
 let sb = null;
@@ -1268,8 +1278,8 @@ function Settings({ onClose, onSaved }) {
         <div style={{display:"grid",gap:18}}>
           <Field label="Supabase URL" hint="Turns on live sync between devices. Settings → API in your Supabase project.">
             <input className="focusable" value={s.supabaseUrl} onChange={e=>setS({...s,supabaseUrl:e.target.value.trim()})} placeholder="https://xxxx.supabase.co" style={inputStyle} /></Field>
-          <Field label="Supabase anon key">
-            <input className="focusable" value={s.supabaseKey} onChange={e=>setS({...s,supabaseKey:e.target.value.trim()})} placeholder="eyJhbGciOi..." style={inputStyle} /></Field>
+          <Field label="Supabase publishable key">
+            <input className="focusable" value={s.supabaseKey} onChange={e=>setS({...s,supabaseKey:e.target.value.trim()})} placeholder="sb_publishable_..." style={inputStyle} /></Field>
           <Field label="Anthropic API key" hint="Only needed to read a PDF deck automatically and to reword questions. Everything else works without it.">
             <input className="focusable" type="password" value={s.anthropicKey} onChange={e=>setS({...s,anthropicKey:e.target.value.trim()})} placeholder="sk-ant-..." style={inputStyle} /></Field>
           <Field label="Or a proxy address" hint="Safer for anything you hand out. Deploy the project in say-it/ and put its /api/claude address here — the key stays on the server.">
@@ -1291,7 +1301,57 @@ function Settings({ onClose, onSaved }) {
 }
 
 /* ================================================================= shell */
-function RolePicker({choose}){return <div style={{maxWidth:760,margin:"0 auto",padding:"70px 0"}}><div style={{fontSize:13,color:C.muted,marginBottom:10}}>CLASSROOM THOUGHT EXCHANGE</div><h1 style={{fontSize:48,letterSpacing:-1.5,margin:"0 0 10px"}}>Say it</h1><p style={{fontSize:20,color:C.body,lineHeight:1.5,maxWidth:620,marginBottom:34}}>A quieter way to get questions into the room — without making students fight for the moment to speak.</p><div className="split-even"><button className="focusable" onClick={()=>choose("teacher")} style={{textAlign:"left",padding:26,border:`1px solid ${C.line}`,borderRadius:16,background:C.surface}}><div style={{fontSize:13,color:C.muted,marginBottom:8}}>FOR THE PERSON TEACHING</div><div style={{fontSize:28,fontWeight:600,marginBottom:8}}>I’m a teacher</div><div style={{fontSize:15,color:C.muted,lineHeight:1.5}}>Start or open a class, set the running order, see questions arrive live, and bring the room into the conversation.</div><div style={{marginTop:20,fontWeight:600}}>Continue →</div></button><button className="focusable" onClick={()=>choose("student")} style={{textAlign:"left",padding:26,border:`1px solid ${C.line}`,borderRadius:16,background:C.surface}}><div style={{fontSize:13,color:C.muted,marginBottom:8}}>FOR SOMEONE IN THE ROOM</div><div style={{fontSize:28,fontWeight:600,marginBottom:8}}>I’m a student</div><div style={{fontSize:15,color:C.muted,lineHeight:1.5}}>Join with a class code, write privately, anchor a question to the material, and choose how it reaches the room.</div><div style={{marginTop:20,fontWeight:600}}>Continue →</div></button></div></div>}
-function App(){const[role,setRole]=useState(()=>LS.get("sayit:role",null)),[showSettings,setShowSettings]=useState(false),[cloud,setCloud]=useState(()=>initSupabase());const choose=r=>{LS.set("sayit:role",r);setRole(r)};const switchRole=()=>{LS.del("sayit:role");setRole(null)};return <div style={{minHeight:"100vh"}}><header style={{borderBottom:`1px solid ${C.line}`,background:C.surface}}><div style={{maxWidth:1180,margin:"0 auto",padding:"14px 20px",display:"flex",alignItems:"center",gap:10}}><div style={{fontSize:30,fontWeight:600}}>Say it</div><span style={{fontSize:12,color:cloud?C.table:C.muted,border:`1px solid ${cloud?C.table:C.line}`,borderRadius:999,padding:"4px 10px"}}>{cloud?"live · synced":"solo · this device"}</span>{role&&<span style={{fontSize:12,color:C.muted}}>{role}</span>}<div style={{marginLeft:"auto",display:"flex",gap:8}}>{role&&<Btn small tone="ghost" onClick={switchRole}>Switch role</Btn>}<Btn small tone="ghost" onClick={()=>setShowSettings(true)}>Settings</Btn></div></div></header><main style={{maxWidth:1180,margin:"0 auto",padding:"24px 20px 80px"}}>{!role?<RolePicker choose={choose}/>:role==="teacher"?<TeacherApp onSwitch={()=>choose("student")}/>:<StudentApp onSwitch={()=>choose("teacher")}/>}</main>{showSettings&&<Settings onClose={()=>setShowSettings(false)} onSaved={()=>{setCloud(initSupabase());setShowSettings(false)}}/>}</div>}
+function resetDevice(){
+  if(!confirm("Reset Say it on this device? This clears the saved role, class/student session, notes, private questions, and local test data. Your shared Supabase setup stays intact.")) return;
+  ["sayit:role","sayit:session","sayit:teacherClass","sayit:solo"].forEach(LS.del);
+  Object.keys(localStorage).filter(k=>k.startsWith("sayit:private:")||k.startsWith("sayit:notes:")||k.startsWith("sayit:tkey:")).forEach(k=>localStorage.removeItem(k));
+  location.reload();
+}
+function RolePicker({choose}){
+  return <div style={{maxWidth:760,margin:"0 auto",padding:"70px 0"}}>
+    <div style={{fontSize:13,color:C.muted,marginBottom:10}}>CLASSROOM THOUGHT EXCHANGE</div>
+    <h1 style={{fontSize:48,letterSpacing:-1.5,margin:"0 0 10px"}}>Say it</h1>
+    <p style={{fontSize:20,color:C.body,lineHeight:1.5,maxWidth:620,marginBottom:34}}>A quieter way to get questions into the room — without making students fight for the moment to speak.</p>
+    <div className="split-even">
+      <button className="focusable" onClick={()=>choose("teacher")} style={{textAlign:"left",padding:26,border:`1px solid ${C.line}`,borderRadius:16,background:C.surface}}>
+        <div style={{fontSize:13,color:C.muted,marginBottom:8}}>FOR THE PERSON TEACHING</div><div style={{fontSize:28,fontWeight:600,marginBottom:8}}>I’m a teacher</div>
+        <div style={{fontSize:15,color:C.muted,lineHeight:1.5}}>Start or open a class, set the running order, see questions arrive live, and bring the room into the conversation.</div><div style={{marginTop:20,fontWeight:600}}>Continue →</div>
+      </button>
+      <button className="focusable" onClick={()=>choose("student")} style={{textAlign:"left",padding:26,border:`1px solid ${C.line}`,borderRadius:16,background:C.surface}}>
+        <div style={{fontSize:13,color:C.muted,marginBottom:8}}>FOR SOMEONE IN THE ROOM</div><div style={{fontSize:28,fontWeight:600,marginBottom:8}}>I’m a student</div>
+        <div style={{fontSize:15,color:C.muted,lineHeight:1.5}}>Join with a class code, write privately, anchor a question to the material, and choose how it reaches the room.</div><div style={{marginTop:20,fontWeight:600}}>Continue →</div>
+      </button>
+    </div>
+    <div style={{marginTop:22,textAlign:"center"}}>
+      <button className="focusable" onClick={resetDevice} style={{border:"none",background:"transparent",color:C.muted,fontSize:13}}>Having trouble? Reset this device</button>
+    </div>
+  </div>
+}
+function App(){
+  const [role,setRole]=useState(()=>LS.get("sayit:role",null));
+  const [showSettings,setShowSettings]=useState(false);
+  const [cloud,setCloud]=useState(()=>initSupabase());
+  const store=useMemo(()=>makeStore(cloud?"cloud":"solo"),[cloud]);
+  const choose=r=>{LS.set("sayit:role",r);setRole(r)};
+  const switchRole=()=>{LS.del("sayit:role");setRole(null)};
+  return <div style={{minHeight:"100vh"}}>
+    <header style={{borderBottom:`1px solid ${C.line}`,background:C.surface}}>
+      <div style={{maxWidth:1180,margin:"0 auto",padding:"14px 20px",display:"flex",alignItems:"center",gap:10}}>
+        <div style={{fontSize:30,fontWeight:600}}>Say it</div>
+        <span style={{fontSize:12,color:cloud?C.table:C.muted,border:`1px solid ${cloud?C.table:C.line}`,borderRadius:999,padding:"4px 10px"}}>{cloud?"live · synced":"offline · this device"}</span>
+        {role&&<span style={{fontSize:12,color:C.muted}}>{role}</span>}
+        <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+          {role&&<Btn small tone="ghost" onClick={switchRole}>Switch role</Btn>}
+          <Btn small tone="ghost" onClick={()=>setShowSettings(true)}>Settings</Btn>
+        </div>
+      </div>
+    </header>
+    <main style={{maxWidth:1180,margin:"0 auto",padding:"24px 20px 80px"}}>
+      {!role?<RolePicker choose={choose}/>:role==="teacher"?<TeacherApp store={store} onSwitch={()=>choose("student")}/>:<StudentApp store={store} onSwitch={()=>choose("teacher")}/>}
+    </main>
+    {role&&<div style={{maxWidth:1180,margin:"-50px auto 0",padding:"0 20px 40px",textAlign:"right"}}><button className="focusable" onClick={resetDevice} style={{border:"none",background:"transparent",color:C.muted,fontSize:12}}>Having trouble? Reset this device</button></div>}
+    {showSettings&&<Settings onClose={()=>setShowSettings(false)} onSaved={()=>{setCloud(initSupabase());setShowSettings(false)}}/>}
+  </div>
+}
 var _boot=document.getElementById("boot");if(_boot)_boot.remove();ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script></body></html>
