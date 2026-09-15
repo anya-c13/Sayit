@@ -416,8 +416,18 @@ function makeStore(mode) {
       if (solo) { const d=soloRead();
         return d.thoughts.filter(t=>t.visibility==="now"||t.visibility==="later")
           .map(t=>({...t, students:{ name:(d.students.find(s=>s.id===t.student_id)||{}).name }})); }
-      const { data, error } = await sb.from("thoughts").select("*, students(name)").eq("class_id",classId).order("created_at",{ascending:false});
-      if (error) throw error; return data;
+      // Do not use PostgREST's implicit students embed here. Some versions/databases
+      // can have more than one relationship between thoughts and students, which
+      // makes `students(name)` ambiguous and blocks the entire teacher screen.
+      // Fetch the two tables separately and join them in the browser.
+      const [{ data: thoughts, error: thoughtsError }, { data: students, error: studentsError }] = await Promise.all([
+        sb.from("thoughts").select("*").eq("class_id",classId).order("created_at",{ascending:false}),
+        sb.from("students").select("id,name").eq("class_id",classId)
+      ]);
+      if (thoughtsError) throw thoughtsError;
+      if (studentsError) throw studentsError;
+      const byId = new Map((students||[]).map(s=>[s.id,s]));
+      return (thoughts||[]).map(t=>({...t, students:{name:(byId.get(t.student_id)||{}).name||"Someone"}}));
     },
     async queue(classId) {
       if (solo) return soloRead().queue;
@@ -1345,7 +1355,7 @@ function Settings({ onClose, onSaved }) {
           <Btn tone="solid" onClick={()=>{ saveSettings(s); onSaved(); }}>Save</Btn>
           <Btn tone="ghost" onClick={onClose}>Cancel</Btn>
           <div style={{marginLeft:"auto"}}>
-            <Btn tone="ghost" small onClick={()=>{ if(confirm("Clear the solo class and everything in it?")){ LS.del(soloKey); LS.del("sayit:session"); LS.del("sayit:teacherClass"); location.reload(); } }}>Reset solo data</Btn>
+            <Btn tone="ghost" small onClick={resetDevice}>Reset this device</Btn>
           </div>
         </div>
       </div>
