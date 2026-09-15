@@ -989,15 +989,36 @@ function TeacherApp({ store, onSwitch }) {
 
   useEffect(()=>{ if(!toast) return; const id=setTimeout(()=>setToast(null),3400); return ()=>clearTimeout(id); },[toast]);
 
-  async function reload(){ if(!klass) return;
-    const k=await store.getClass(klass.code); if(!k) return;
-    const sh=await store.shape(k.id);
-    const [thoughts,queue,students]=await Promise.all([store.classThoughts(k.id),store.queue(k.id),store.students(k.id)]);
-    setState({ klass:k, ...sh, thoughts, queue, students }); }
+  async function reload(){
+    if(!klass) return;
+    try {
+      const k=await store.getClass(klass.code);
+      // The class may have been deleted during testing. Never leave the teacher
+      // trapped on an infinite Loading screen in that case.
+      if(!k){
+        LS.del("sayit:teacherClass");
+        setKlass(null);
+        setState(null);
+        setErr("That saved class no longer exists. You can start a new class or open another one.");
+        return;
+      }
+      const sh=await store.shape(k.id);
+      const [thoughts,queue,students]=await Promise.all([store.classThoughts(k.id),store.queue(k.id),store.students(k.id)]);
+      setState({ klass:k, ...sh, thoughts, queue, students });
+      setErr(null);
+    } catch(e) {
+      console.error("Say it teacher reload failed", e);
+      setErr(e?.message || "Say it couldn't load the class. Check your connection and Supabase settings.");
+    }
+  }
 
   useEffect(()=>{ if(!klass) return; let stop=()=>{};
-    reload().then(()=>{ store.getClass(klass.code).then(k=>{ if(k) stop=store.subscribe(k.id,reload); }); });
-    return ()=>stop(); },[klass]);
+    reload().then(()=>{
+      store.getClass(klass.code).then(k=>{ if(k) stop=store.subscribe(k.id,reload); })
+        .catch(e=>console.error("Say it subscription setup failed", e));
+    });
+    return ()=>stop();
+  },[klass]);
 
   if (!klass) return (
     <div style={{maxWidth:460,margin:"0 auto",padding:"40px 0"}}>
@@ -1005,12 +1026,32 @@ function TeacherApp({ store, onSwitch }) {
       <Card style={{padding:22,marginBottom:16}}>
         <Field label="What's the class called?" hint="Students see this when they join.">
           <input className="focusable" value={name} onChange={e=>setName(e.target.value)} placeholder="Designing for Influence" style={inputStyle} autoFocus /></Field>
-        <div style={{marginTop:18}}><Btn tone="solid" full onClick={async()=>{ try{ const k=await store.createClass(name.trim()||"Class"); LS.set("sayit:teacherClass",k); setKlass(k); }catch(e){ setErr(e.message); } }}>Create it</Btn></div>
+        <div style={{marginTop:18}}><Btn tone="solid" full onClick={async()=>{
+          setErr(null);
+          try {
+            const k=await store.createClass(name.trim()||"Class");
+            LS.set("sayit:teacherClass",k);
+            setKlass(k);
+          } catch(e) {
+            console.error("Say it create class failed", e);
+            setErr(e?.message || "Couldn't create the class. Check the Supabase connection in Settings.");
+          }
+        }}>Create it</Btn></div>
       </Card>
       <Card style={{padding:22}}>
         <Field label="Or open a class you already made">
           <input className="focusable" value={code} maxLength={6} onChange={e=>setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,""))} placeholder="ABC123" style={{...inputStyle,letterSpacing:4,textAlign:"center"}} /></Field>
-        <div style={{marginTop:14}}><Btn full disabled={code.length!==6} onClick={async()=>{ const k=await store.getClass(code); if(k){ LS.set("sayit:teacherClass",k); setKlass(k);} else setErr("No class with that code."); }}>Open it</Btn></div>
+        <div style={{marginTop:14}}><Btn full disabled={code.length!==6} onClick={async()=>{
+          setErr(null);
+          try {
+            const k=await store.getClass(code);
+            if(k){ LS.set("sayit:teacherClass",k); setKlass(k); }
+            else setErr("No class with that code.");
+          } catch(e) {
+            console.error("Say it open class failed", e);
+            setErr(e?.message || "Couldn't open the class. Check the Supabase connection in Settings.");
+          }
+        }}>Open it</Btn></div>
       </Card>
       {err && <div style={{fontSize:14,color:C.now,marginTop:14}}>{err}</div>}
       <div style={{marginTop:16,textAlign:"center"}}>
@@ -1019,7 +1060,19 @@ function TeacherApp({ store, onSwitch }) {
     </div>
   );
 
-  if (!state) return <div style={{padding:60,textAlign:"center",color:C.muted}}><Spin/> Loading</div>;
+  if (!state) return (
+    <div style={{maxWidth:620,margin:"0 auto",padding:"55px 0"}}>
+      <Card style={{padding:28,textAlign:"center"}}>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:14}}><Spin size={22}/></div>
+        <div style={{fontSize:22,fontWeight:600,color:C.ink,marginBottom:8}}>Loading your class…</div>
+        <div style={{fontSize:15,color:C.muted,lineHeight:1.5,marginBottom:18}}>
+          If this stays here, Say it isn't able to reach the saved class. You can safely reset this device and start or open a class again.
+        </div>
+        {err && <div style={{fontSize:14,color:C.now,lineHeight:1.5,marginBottom:18,padding:12,borderRadius:10,background:C.paper}}>{err}</div>}
+        <button className="focusable" onClick={resetDevice} style={{border:`1px solid ${C.line}`,background:C.surface,color:C.ink,borderRadius:10,padding:"11px 16px",fontSize:14,fontWeight:600}}>Reset this device</button>
+      </Card>
+    </div>
+  );
 
   const topic = state.topics.find(t=>t.id===state.klass.current_topic_id);
   const live = state.thoughts.filter(t=>t.visibility==="now");
@@ -1322,8 +1375,8 @@ function RolePicker({choose}){
         <div style={{fontSize:15,color:C.muted,lineHeight:1.5}}>Join with a class code, write privately, anchor a question to the material, and choose how it reaches the room.</div><div style={{marginTop:20,fontWeight:600}}>Continue →</div>
       </button>
     </div>
-    <div style={{marginTop:22,textAlign:"center"}}>
-      <button className="focusable" onClick={resetDevice} style={{border:"none",background:"transparent",color:C.muted,fontSize:13}}>Having trouble? Reset this device</button>
+    <div style={{marginTop:28,display:"flex",justifyContent:"center"}}>
+      <button className="focusable" onClick={resetDevice} style={{border:`1px solid ${C.line}`,background:C.surface,color:C.body,borderRadius:10,padding:"10px 15px",fontSize:13,fontWeight:600}}>↻ Having trouble? Reset this device</button>
     </div>
   </div>
 }
@@ -1349,7 +1402,7 @@ function App(){
     <main style={{maxWidth:1180,margin:"0 auto",padding:"24px 20px 80px"}}>
       {!role?<RolePicker choose={choose}/>:role==="teacher"?<TeacherApp store={store} onSwitch={()=>choose("student")}/>:<StudentApp store={store} onSwitch={()=>choose("teacher")}/>}
     </main>
-    {role&&<div style={{maxWidth:1180,margin:"-50px auto 0",padding:"0 20px 40px",textAlign:"right"}}><button className="focusable" onClick={resetDevice} style={{border:"none",background:"transparent",color:C.muted,fontSize:12}}>Having trouble? Reset this device</button></div>}
+    {role&&<div style={{maxWidth:1180,margin:"-35px auto 0",padding:"0 20px 40px",textAlign:"right"}}><button className="focusable" onClick={resetDevice} style={{border:`1px solid ${C.line}`,background:C.surface,color:C.body,borderRadius:9,padding:"8px 12px",fontSize:12,fontWeight:600}}>↻ Reset this device</button></div>}
     {showSettings&&<Settings onClose={()=>setShowSettings(false)} onSaved={()=>{setCloud(initSupabase());setShowSettings(false)}}/>}
   </div>
 }
