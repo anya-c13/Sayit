@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SayIt · Prototype 2</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box} body{margin:0;background:#edf0ee;color:#16211d;font-family:Arial,sans-serif}button{font:inherit;cursor:pointer}.app{max-width:1050px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;align-items:center}.logo{font-size:38px;font-style:italic;font-weight:600}.dot{width:38px;height:38px;border-radius:50%;background:#777}.topic{padding:18px 20px;border-radius:10px;margin:8px 0;background:#d2d2d2}.topic.current{background:#737373;color:white}.topichead{display:flex;justify-content:space-between;align-items:center}.clear button{background:none;border:0;font-size:27px;color:inherit}.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin-top:20px}.panel{background:#737373;color:white;border-radius:12px;padding:20px}.selected{background:#bcbcbc;color:#111;border-radius:10px;padding:24px;min-height:90px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:20px}.anchor{background:#eee;color:#111;border-radius:8px;padding:13px;margin-top:14px}.actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px}.actions button,.smallbtn{border:0;border-radius:9px;padding:16px;background:#eee;color:#111}.actions button:disabled{opacity:.4}.frame{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.frame button{border:1px solid #ddd;border-radius:8px;background:#f5f5f5;padding:12px}.questions{margin-top:20px;background:#aaa;border-radius:12px;padding:18px}.qcard{background:#eee;color:#111;border-radius:9px;padding:16px;margin-bottom:12px}.qactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.qactions button{border:0;border-radius:8px;padding:9px 12px;background:#fff}.badge{font-size:12px;padding:4px 8px;border-radius:999px;background:#d9e6dc}.banner{padding:12px 14px;border-radius:9px;background:#fff3d7;color:#5b4200;margin:15px 0}.selectedlabel{font-size:12px;text-transform:uppercase;letter-spacing:.08em;opacity:.7;margin-bottom:8px}.sim{background:#fff;border:1px solid #ddd;color:#333;border-radius:12px;padding:15px}.sim textarea{width:100%;min-height:85px;border:1px solid #ddd;border-radius:8px;padding:10px;font:inherit}.row{display:flex;gap:8px;flex-wrap:wrap}.row button{border:1px solid #ddd;background:#fff;border-radius:8px;padding:10px}.notice{position:fixed;right:20px;bottom:20px;background:#16211d;color:#fff;padding:15px 18px;border-radius:10px;max-width:350px}.muted{color:#6d7772;font-size:13px}.status{font-size:13px}.source{font-size:12px;color:#6d7772;margin-top:8px}@media(max-width:800px){.grid{grid-template-columns:1fr}.app{padding:16px}.actions{grid-template-columns:1fr}.frame{grid-template-columns:1fr}}
+</style>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+const {useState}=React;
+const SUPABASE_URL="https://oqnnjfmobrnrfpimglln.supabase.co";
+const SUPABASE_KEY="sb_publishable_E4jz_jSfbWKsQZ7lneQCLQ_ATdpw6Si";
+let sb=null;try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)}catch(e){}
+const seed={topic:"current topic",next:"immediate next topic",selected:"the sentence selected",question:"",status:"draft",tableCount:0,tableName:"Table 2",sayNow:false,clear:null};
+function App(){
+ const [s,setS]=useState(seed),[note,setNote]=useState(""),[notice,setNotice]=useState(""),[selected,setSelected]=useState("the sentence selected"),[q,setQ]=useState(""),[shared,setShared]=useState(false),[recalled,setRecalled]=useState(false),[answered,setAnswered]=useState(false),[sentAt,setSentAt]=useState(null);
+ const notify=m=>{setNotice(m);setTimeout(()=>setNotice(""),2200)};
+ const makeQuestion=()=>{setQ(selected.endsWith("?")?selected:selected.replace(/\.$/,"")+"?");notify("turned your note into a question")};
+ const send=kind=>{if(kind==="now"&&!s.sayNow){notify("say now is not enabled by faculty");return}setS({...s,status:kind});setSentAt(Date.now());notify(kind==="table"?"shared with table":kind==="now"?"say now sent to faculty":"saved for later")};
+ const recall=()=>{if(sentAt&&Date.now()-sentAt<=15*60*1000){setRecalled(true);notify("question recalled")}else notify("recall window has closed")};
+ return <div className="app">
+  <div className="top"><div className="logo">SayIt</div><div className="dot"></div></div>
+  <div className="banner"><b>prototype 2.0 usability test</b><br/><span className="muted">use your normal note taking app beside this page. this screen simulates the future SayIt extension.</span></div>
+  <div className="status">● live class · {s.tableName} · <button style={{border:0,background:"none",textDecoration:"underline"}} onClick={()=>setS({...s,sayNow:!s.sayNow})}>{s.sayNow?"say now enabled":"say now closed"}</button></div>
+  <div className="topic"><div className="topichead"><span>previous topic</span></div></div>
+  <div className="topic current"><div className="topichead"><b>{s.topic}</b><span className="clear"><button onClick={()=>setS({...s,clear:true})}>👍</button><button onClick={()=>setS({...s,clear:false})}>👎</button></span></div><div style={{fontSize:12,opacity:.75}}>clear / unclear</div></div>
+  <div className="topic"><div className="topichead"><span>{s.next}</span></div></div>
+  <div className="grid">
+   <div className="panel">
+    <div className="selectedlabel">selected from your notes</div><div className="selected">{selected}</div>
+    <div className="anchor"><b>anchor</b><div className="source">current class material · relevant context</div></div>
+    <div className="row" style={{marginTop:12}}><button className="smallbtn" onClick={()=>{setSelected(selected+" (rephrased)");notify("note rephrased")}}>rephrase</button><button className="smallbtn" onClick={makeQuestion}>turn into question</button></div>
+    {q&&<div style={{marginTop:14}}><div className="selectedlabel">question</div><div className="selected">{q}</div><div className="frame">
+      <button onClick={()=>setQ("can you explain "+q.replace(/^why\s+/i,""))}>can you explain…</button><button onClick={()=>setQ("why does "+q.replace(/^why\s+/i,""))}>why does…</button><button onClick={()=>setQ("how does this relate to "+q.replace(/^why\s+/i,""))}>how does this relate…</button><button onClick={()=>setQ("i'm wondering whether "+q.replace(/^why\s+/i,""))}>i'm wondering whether…</button>
+    </div></div>}
+    <div className="actions"><button disabled={!q} onClick={()=>send("now")}>say now</button><button disabled={!q} onClick={()=>send("table")}>table</button><button disabled={!q} onClick={()=>send("later")}>later</button></div>
+    <div className="muted" style={{marginTop:10,color:"#eee"}}>{s.sayNow?"faculty has enabled say now":"faculty has not enabled say now yet"}</div>
+   </div>
+   <div className="sim"><b>simulate selection from your note taking app</b><p className="muted">for testing, paste or type the note you would normally write in google docs, obsidian or notion.</p><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="type a normal note here…"/><div className="row" style={{marginTop:10}}><button onClick={()=>{setSelected(note||"the sentence selected");notify("selected note imported into SayIt")}}>select note → SayIt</button></div><p className="source">in the final product, this action would happen through the extension/plugin.</p></div>
+  </div>
+  <div className="questions"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><b>my questions</b><span className="badge">{s.status}</span></div>{q?<div className="qcard">{recalled?<div><s>{q}</s><div className="muted">recalled</div></div>:<><div>{q}</div><div className="source">table: {s.tableName}</div><div className="qactions">{s.status==="table"&&<><button onClick={()=>{setShared(true);setS({...s,tableCount:s.tableCount+1})}}>+1 · {s.tableCount}</button><button onClick={()=>{setShared(false);notify("not my question")}}>not my question</button></>}{answered&&<span className="badge">addressed</span>}<button onClick={recall}>recall / mark not needed</button></div>{shared&&<div className="source">{s.tableCount} people at your table have the same question · send to faculty</div>}</>}</div>:<div className="qcard muted">your converted questions will appear here</div>}</div>
+  {notice&&<div className="notice">{notice}</div>}
+ </div>
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script></body></html>
